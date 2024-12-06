@@ -1,100 +1,82 @@
-### Шаги по работе с проектом
+# Network Traffic Anomaly Detection System
 
-Для начала откройте Docker Desktop
+Ever dealt with compromised network equipment? This project tackles a common problem in telecom companies - detecting when customer devices might have been hacked and turned into spam bots or DDoS attackers.
 
-Далее вам нужно установить и запустить Redis:
+## What's This All About?
 
-```commandline
+Working at an ISP, you quickly learn that customers rarely know their equipment has been compromised until it's too late. Often, the first sign is a massive spike in network traffic. I built this monitoring system to catch these issues early by analyzing traffic patterns in real-time.
+
+The system watches for unusual patterns - like a home PC suddenly sending out massive amounts of data (classic sign of a spam bot) or consuming bandwidth in ways that don't match normal usage. When it spots something fishy, it alerts the team for investigation.
+
+## The Tech Side
+
+### Backend
+Built the core with Python, using:
+- FastAPI for the API layer
+- Redis for handling real-time data
+- Pandas/NumPy for number crunching
+
+The backend does the heavy lifting - processing traffic data, running statistical analyses, and figuring out what counts as "unusual" for each user.
+
+### Frontend
+The dashboard's built in React with:
+- Recharts for visualization
+- Tailwind CSS for styling
+
+Focused on making the interface straightforward - you can quickly spot normal vs. suspicious traffic patterns and drill down into specific cases.
+
+## How It Works
+
+1. System collects network traffic data
+2. Analyzes patterns using statistical methods (Z-scores mainly)
+3. Flags suspicious activity
+4. Shows results in real-time on the dashboard
+
+Built a few API endpoints to make everything accessible:
+- `/api/anomalies`: Lists detected suspicious activity
+- `/api/subscriber/{id}`: Shows specific user's traffic
+- `/api/statistics`: Overall network stats
+
+
+
+1. **Setting up Redis**
+```bash
+# Start Redis using Docker
 docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
 ```
-
-Теперь вы можете запустить обработку и парсинг данных в редис используя:
-
-```commandline
+2. **Running the System**
+```bash
+# Process and load data into Redis
 python r.py
-```
 
-Запуск FastAPI сервер с автоматической перезагрузкой при изменениях:
+# Start the FastAPI server
+uvicorn api:app --reload
 
-```commandline
-uvicorn api:app --reload 
-```
-
-Фронтенд:
-
-```commandline
+# Start the frontend
 npm run dev --prefix ./simple_dashboard
 ```
-Вы великолепны, а теперь вы можете перейти по адресу ниже и наслаждатсья жизнью!
 
-http://localhost:5173/
+3. Access the dashboard at http://localhost:5173/
 
 
-------------------------------------------------------------------------------------------------------
-# Загрузка в редиску
+### Data Structure
 
-Файл r.py - чтение и очистка данных, преобразование данных, запись данных в Redis.
+The system processes hourly data snapshots for each network device. Data points include:
+- `IdSubscriber`: User identifier
+- `IdPSX`: Network equipment identifier
+- `Start1hPeriod`: Start of 1-hour interval
+- `Start10mPeriod`: Start of 10-minute interval
+- `UpTx`: Upload traffic (bytes)
+- `DownTx`: Download traffic (bytes)
 
-```r.py``` поместить в одну директорию с датасетом. Пример:
+Redis keys follow the format: `{IdPSX} {YYYY-MM-DD HH:MM:SS}`  
+Example: `3 2024-01-01 00:00:00`
 
-* ./telecom10k/*
-* ./telecom100k/*
-* ./telecom1000k/*
-* ./r.py
+### Visualization Features
 
-В конце файла можно прописать путь к интересуемому датасету:
-```commandline
-if __name__ == "__main__":
-    file_pattern = 'telecom100k/*'
-    process_files(file_pattern)
-```
-
-**ВАЖНО**
-
-Для корректной работы программы из папки с датасетом необходимо удалить ВСЕ файлы, кроме тех, которые начинаются с psx_*
-
-## Подключение к БД Redis
-
-Установка и запуск Redis:
-
-```commandline
-docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
-```
-
-В начале ```r.py``` есть строка для подключения к БД. При необходимости можно изменить параметры подключения (указаны по умолчанию)
-
-```commandline
-r = redis.Redis(host='localhost', port=6379, db=0)
-```
-
-В Redis помещаются витрины данных за каждый час для каждого из шести сетевых устройств. Их можно получить по ключу вида:
-
-3 2024-01-01 00:00:00
-
-Где:
-3 - IdPSX
-2024-01-01 00:00:00 - Дата и время начала часа, для которого подготовлены данные
-
-Когда сделаете таблицу со взломанными пользователями, засуньте их в dataframe и прогоните через функцию load() 
-
-## TODO: Графики
-
-В витрине данных есть следующие поля:
-* IdSubscriber - номер пользователя
-* IdPSX - номер сетевого оборудования
-* Start1hPeriod - начала интервала в 1. час (он же часть ключа в Redis) 
-* Start10mPeriod - начала интервала в 10 минут, взят из названия файла с логами
-* UpTx - трафик выгрузки в байтах
-* DownTx - трафик скачивания в байтах
-
-Графики (мои идеи) 
-* Для каждого устройства (IdPSX) получить сумму трафика и нарисовать его во времени
-* Для пользователей, которых взломали: трафик во времени
-* Общий трафик во времени
-
-При этом под трафиком может пониматься:
-
-* UpTx
-* DownTx
-* UpTx + DownTx
-* UpTx - DownTx
+The dashboard provides various traffic analysis views:
+- Per-device traffic aggregation over time
+- Compromised users' traffic patterns
+- Network-wide traffic trends
+- Upload vs download comparisons
+- Traffic anomaly detection
